@@ -64,15 +64,24 @@ export const loginWithRedirectFn = (mockWindow, mockFetch, fetchResponse) => {
     tokenResponse = {},
     code = TEST_CODE,
     state = TEST_STATE,
-    error = null
+    error = null,
+    errorDescription = null
   ) => {
     await auth0.loginWithRedirect(options);
     expect(mockWindow.location.assign).toHaveBeenCalled();
 
-    if (error) {
+    if (error && errorDescription) {
+      window.history.pushState(
+        {},
+        '',
+        `/?error=${error}&error_description=${errorDescription}&state=${state}`
+      );
+    } else if (error) {
       window.history.pushState({}, '', `/?error=${error}&state=${state}`);
-    } else {
+    } else if (code) {
       window.history.pushState({}, '', `/?code=${code}&state=${state}`);
+    } else {
+      window.history.pushState({}, '', `/`);
     }
 
     mockFetch.mockResolvedValueOnce(

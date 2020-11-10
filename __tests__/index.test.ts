@@ -511,13 +511,6 @@ describe('Auth0', () => {
   });
 
   describe('handleRedirectCallback()', () => {
-    it('throws when there is no query string', async () => {
-      const { auth0 } = await setup();
-      await expect(auth0.handleRedirectCallback()).rejects.toThrow(
-        'There are no query params available for parsing.'
-      );
-    });
-
     describe('when there is a valid query string in the url', () => {
       const localSetup = async (
         clientOptions?: Partial<Auth0ClientOptions>
@@ -538,118 +531,7 @@ describe('Auth0', () => {
         result.cache.get.mockReturnValue({ access_token: TEST_ACCESS_TOKEN });
         return result;
       };
-      it('calls parseQueryResult correctly', async () => {
-        const { auth0, utils } = await localSetup();
-        await auth0.handleRedirectCallback();
-        expect(utils.parseQueryResult).toHaveBeenCalledWith(
-          `code=${TEST_CODE}&state=${TEST_ENCODED_STATE}`
-        );
-      });
-      it('uses `state` from parsed query to get a transaction', async () => {
-        const { auth0, utils, transactionManager } = await localSetup();
-        const queryState = 'the-state';
-        utils.parseQueryResult.mockReturnValue({ state: queryState });
 
-        await auth0.handleRedirectCallback();
-
-        expect(transactionManager.get).toHaveBeenCalled();
-      });
-      it('throws error with AuthenticationError', async () => {
-        const { auth0, utils } = await localSetup();
-        const queryResult = { error: 'unauthorized' };
-        utils.parseQueryResult.mockReturnValue(queryResult);
-
-        await expect(auth0.handleRedirectCallback()).rejects.toBeInstanceOf(
-          AuthenticationError
-        );
-      });
-      it('throws AuthenticationError with message from error_description', async () => {
-        const { auth0, utils } = await localSetup();
-        const queryResult = {
-          error: 'unauthorized',
-          error_description: 'Unauthorized user'
-        };
-        utils.parseQueryResult.mockReturnValue(queryResult);
-
-        await expect(auth0.handleRedirectCallback()).rejects.toThrow(
-          queryResult.error_description
-        );
-      });
-
-      it('throws AuthenticationError with state, error, error_description', async () => {
-        const { auth0, utils } = await localSetup();
-        const queryResult = {
-          error: 'unauthorized',
-          error_description: 'Unauthorized user',
-          state: 'abcxyz'
-        };
-        utils.parseQueryResult.mockReturnValue(queryResult);
-
-        let errorThrown: AuthenticationError;
-        try {
-          await auth0.handleRedirectCallback();
-        } catch (error) {
-          errorThrown = error;
-        }
-
-        expect(errorThrown.state).toEqual(queryResult.state);
-        expect(errorThrown.error).toEqual(queryResult.error);
-        expect(errorThrown.error_description).toEqual(
-          queryResult.error_description
-        );
-      });
-
-      it('throws AuthenticationError and includes the transaction state', async () => {
-        const { auth0, utils, transactionManager } = await localSetup();
-
-        const appState = {
-          key: 'property'
-        };
-
-        transactionManager.get.mockReturnValue({
-          appState,
-          nonce: 'foo',
-          code_verifier: 'bar'
-        });
-
-        const queryResult = {
-          error: 'unauthorized',
-          error_description: 'Unauthorized user',
-          state: 'abcxyz'
-        };
-
-        utils.parseQueryResult.mockReturnValue(queryResult);
-
-        let errorThrown: AuthenticationError;
-
-        try {
-          await auth0.handleRedirectCallback();
-        } catch (error) {
-          errorThrown = error;
-        }
-
-        expect(errorThrown.appState).toEqual(appState);
-      });
-
-      it('throws error when there is no transaction', async () => {
-        const { auth0, transactionManager } = await localSetup();
-        transactionManager.get.mockReturnValue(undefined);
-
-        await expect(auth0.handleRedirectCallback()).rejects.toThrow(
-          'Invalid state'
-        );
-      });
-      it('clears the transaction data when an error occurs', async () => {
-        const { auth0, utils, transactionManager } = await localSetup();
-        const queryResult = { error: 'unauthorized', state: '897dfuksdfuo' };
-        utils.parseQueryResult.mockReturnValue(queryResult);
-
-        try {
-          await auth0.handleRedirectCallback();
-        } catch (e) {
-          expect(transactionManager.remove).toHaveBeenCalledWith();
-        }
-      });
       it('uses `state` from parsed query to remove the transaction', async () => {
         const { auth0, utils, transactionManager } = await localSetup();
         const queryState = 'the-state';

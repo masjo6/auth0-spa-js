@@ -730,21 +730,69 @@ describe('Auth0Client', () => {
     it('should throw an error if the /authorize call redirects with an error param', async () => {
       const auth0 = setup();
       let error;
+      const appState = {
+        key: 'property'
+      };
       try {
         await loginWithRedirect(
           auth0,
-          undefined,
+          { appState },
           true,
           {},
           null,
-          null,
-          'some-error'
+          'error-state',
+          'some-error',
+          'some-error-description'
         );
       } catch (e) {
         error = e;
       }
       expect(error).toBeDefined();
       expect(error.error).toBe('some-error');
+      expect(error.error_description).toBe('some-error-description');
+      expect(error.state).toBe('error-state');
+      expect(error.appState).toBe(appState);
+    });
+
+    it('should clear the transaction data when the /authorize call redirects with an error param', async () => {
+      const auth0 = setup();
+      let error;
+      jest.spyOn(auth0['transactionManager'], 'remove');
+
+      try {
+        await loginWithRedirect(auth0, {}, true, {}, null, null, 'some-error');
+      } catch (e) {
+        error = e;
+      }
+
+      expect(error).toBeDefined();
+      expect(auth0['transactionManager'].remove).toHaveBeenCalledWith();
+    });
+
+    it('should throw an error if the /authorize call redirects with no params', async () => {
+      const auth0 = setup();
+      let error;
+      try {
+        await loginWithRedirect(auth0, undefined, true, {}, null, null, null);
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeDefined();
+      expect(error.message).toBe(
+        'There are no query params available for parsing.'
+      );
+    });
+
+    it('should throw an error if there is no transaction', async () => {
+      const auth0 = setup();
+      let error;
+      try {
+        await auth0.handleRedirectCallback('test?foo=bar');
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeDefined();
+      expect(error.message).toBe('Invalid state');
     });
   });
 
